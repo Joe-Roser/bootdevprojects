@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
-	"os"
+
+	"internal/pokeapi"
 )
 
 type cliCommand struct {
@@ -17,8 +16,7 @@ type cliCommand struct {
 
 func CmdExit(_ *config, _ ...string) error {
 	fmt.Print("Closing the Pokedex... Goodbye!\n\n")
-	os.Exit(0)
-	return nil
+	return errors.New("")
 }
 
 func CmdHelp(_ *config, args ...string) error {
@@ -40,20 +38,17 @@ type Locations struct {
 }
 
 func CmdMap(conf *config, args ...string) error {
-	//get request
-	res, err := http.Get(conf.next_req)
-	if err != nil {
-		return err
-	}
+	// Check cache
+	body, ok := conf.cache.Get(conf.next_req)
 
-	// Read response and check its valid
-	body, err := io.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return err
-	}
-	if res.StatusCode > 299 {
-		return errors.New("Api request failed")
+	//if no hit, make requset
+	var err error
+	if !ok {
+		body, err = pokeapi.MakeRequest(conf.next_req)
+		if err != nil {
+			return err
+		}
+		conf.cache.Add(conf.next_req, body)
 	}
 
 	// Parse response into locations struct
@@ -71,12 +66,12 @@ func CmdMap(conf *config, args ...string) error {
 
 	// Handle updating conf
 	if locations.Previous == nil {
-		conf.prev_req = "https://pokeapi.co/api/v2/location-area/"
+		conf.prev_req = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 	} else {
 		conf.prev_req = locations.Previous.(string)
 	}
 	if locations.Next == nil {
-		conf.next_req = "https://pokeapi.co/api/v2/location-area/"
+		conf.next_req = "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20"
 	} else {
 		conf.next_req = locations.Next.(string)
 	}
@@ -84,20 +79,17 @@ func CmdMap(conf *config, args ...string) error {
 	return nil
 }
 func CmdMapb(conf *config, args ...string) error {
-	//get request
-	res, err := http.Get(conf.prev_req)
-	if err != nil {
-		return err
-	}
+	// Check Cache
+	body, ok := conf.cache.Get(conf.prev_req)
 
-	// Read response and check its valid
-	body, err := io.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return err
-	}
-	if res.StatusCode > 299 {
-		return errors.New("Api request failed")
+	//if no hit, make requset
+	var err error
+	if !ok {
+		body, err = pokeapi.MakeRequest(conf.prev_req)
+		if err != nil {
+			return err
+		}
+		conf.cache.Add(conf.prev_req, body)
 	}
 
 	// Parse response into locations struct

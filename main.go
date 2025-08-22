@@ -2,24 +2,39 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"time"
+
+	"internal/pokecache"
 )
 
 type config struct {
 	prev_req string
 	next_req string
+	cache    *pokecache.PokeCache
 }
+
+var cache_reset time.Duration = 6 * time.Second
 
 func main() {
 	//New scanner of terminal
 	scanner := bufio.NewScanner(os.Stdin)
 
+	// Gets context to kill the cache if the program finishes
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		cancel()
+		time.Sleep(1 * time.Second)
+	}()
+
 	//initialize config
 	config := &config{
 		prev_req: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
 		next_req: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
+		cache:    pokecache.NewCache(ctx, cache_reset),
 	}
 
 	// Main loop of REPL
@@ -48,11 +63,10 @@ func main() {
 			fmt.Printf("Unknown command\n")
 		}
 		if err != nil {
-			fmt.Printf("Error: %v. Shutting down\n", err)
-			os.Exit(0)
+			fmt.Printf("%v\n", err)
+			return
 		}
 		fmt.Println("")
-
 	}
 }
 

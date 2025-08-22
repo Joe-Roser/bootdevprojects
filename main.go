@@ -8,7 +8,8 @@ import (
 )
 
 type config struct {
-	next_offset int
+	prev_req string
+	next_req string
 }
 
 func main() {
@@ -17,7 +18,8 @@ func main() {
 
 	//initialize config
 	config := &config{
-		next_offset: 0,
+		prev_req: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
+		next_req: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
 	}
 
 	// Main loop of REPL
@@ -27,6 +29,7 @@ func main() {
 		// Scan input and read to cleaner
 		scanner.Scan()
 		input := strings.Fields(strings.Trim(strings.ToLower(scanner.Text()), " "))
+		fmt.Println("")
 
 		// initialise args. If no input, continue. If more than one command, add to args
 		var args []string
@@ -38,11 +41,17 @@ func main() {
 
 		// Get command. If valid command, execute
 		cmd, ok := GetCommands()[input[0]]
+		var err error
 		if ok {
-			cmd.callback(config, args...)
+			err = cmd.callback(config, args...)
 		} else {
 			fmt.Printf("Unknown command\n")
 		}
+		if err != nil {
+			fmt.Printf("Error: %v. Shutting down\n", err)
+			os.Exit(0)
+		}
+		fmt.Println("")
 
 	}
 }

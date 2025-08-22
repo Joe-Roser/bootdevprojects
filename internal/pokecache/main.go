@@ -2,7 +2,6 @@ package pokecache
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -56,9 +55,6 @@ func (c *PokeCache) reapLoop(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	for {
 		select {
-		case <-ctx.Done():
-			fmt.Println("closing cache")
-			return
 		case <-ticker.C:
 			c.lock.Lock()
 			for key, val := range c.cache {
@@ -67,6 +63,8 @@ func (c *PokeCache) reapLoop(ctx context.Context, interval time.Duration) {
 				}
 			}
 			c.lock.Unlock()
+		case <-ctx.Done():
+			return
 		}
 	}
 }

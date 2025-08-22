@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -11,13 +12,20 @@ import (
 	"internal/pokecache"
 )
 
+// Errors
+var ErrInvalidInput = errors.New("invalid input")
+var ErrExit = errors.New("Exit")
+
+// config type
 type config struct {
 	prev_req string
 	next_req string
 	cache    *pokecache.PokeCache
 }
 
-var cache_reset time.Duration = 6 * time.Second
+// Constants
+const cache_reset = 30 * time.Second
+const wait_after_exit = 500 * time.Millisecond
 
 func main() {
 	//New scanner of terminal
@@ -27,7 +35,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		time.Sleep(1 * time.Second)
+		time.Sleep(wait_after_exit)
 	}()
 
 	//initialize config
@@ -60,11 +68,13 @@ func main() {
 		if ok {
 			err = cmd.callback(config, args...)
 		} else {
-			fmt.Printf("Unknown command\n")
+			fmt.Printf("Error: unknown command\n")
 		}
-		if err != nil {
-			fmt.Printf("%v\n", err)
+
+		if errors.Is(err, ErrExit) {
 			return
+		} else if err != nil {
+			fmt.Printf("Error: %v\n", err)
 		}
 		fmt.Println("")
 	}

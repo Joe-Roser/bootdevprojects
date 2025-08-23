@@ -63,6 +63,7 @@ func cmdMap(conf *config, args ...string) error {
 
 	return nil
 }
+
 func cmdMapb(conf *config, args ...string) error {
 	// Search cache and make request
 	body, err := pokeapi.Get(conf.prev_req, conf.cache)
@@ -159,6 +160,41 @@ func cmdCatch(conf *config, args ...string) error {
 	return nil
 }
 
+func cmdInspect(conf *config, args ...string) error {
+	if len(args) != 1 {
+		return errInvalidInput
+	}
+
+	search, ok := conf.pokedex[args[0]]
+	if !ok {
+		fmt.Printf("You haven't found a pokemon called %s. Have you spelt it correctly?\n", args[0])
+		return nil
+	}
+
+	fmt.Printf("name: %s\n", args[0])
+	fmt.Printf("Height: %v\n", search.Height)
+	fmt.Printf("Weight: %v\n", search.Weight)
+	fmt.Printf("Stats:\n")
+	for _, stat := range search.Stats {
+		fmt.Printf("  -%s: %v\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Printf("Types:\n")
+	for _, t := range search.Types {
+		fmt.Printf("  - %s\n", t.Type.Name)
+	}
+
+	return nil
+}
+
+func cmdPokedex(conf *config, args ...string) error {
+	fmt.Printf("Your Pokedex:\n")
+	for name := range conf.pokedex {
+		fmt.Printf("  -%s\n", name)
+	}
+
+	return nil
+}
+
 //The commands dictionary
 
 func GetCommands() map[string]cliCommand {
@@ -183,6 +219,16 @@ func GetCommands() map[string]cliCommand {
 			name:        "help",
 			description: "List all commands",
 			callback:    cmdHelp,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Look at a pokemon you have caught",
+			callback:    cmdInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "List all pokemon you have caught",
+			callback:    cmdPokedex,
 		},
 		"map": {
 			name:        "map",

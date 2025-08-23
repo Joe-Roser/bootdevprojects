@@ -1,48 +1,48 @@
 package pokeapi
 
 import (
+	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 
 	"internal/pokecache"
 )
 
-func Get(url string, c *pokecache.PokeCache) ([]byte, error) {
-	body, ok := c.Get(url)
+func Get[T any](url string, c *pokecache.PokeCache) (T, error) {
+	var zero T
 
-	// Return on cache hit
-	if ok {
-		return body, nil
+	// if value is in cache, return it
+	if value, ok := c.Get(url); ok {
+		if value, ok := value.(T); ok {
+			return value, nil
+		}
+		return zero, errors.New("cached value has different type")
 	}
 
-	// else, make request, check errors and return
-	body, err := MakeRequest(url)
-	if err != nil {
-		return nil, err
-	}
-
-	// remember to add the request to the cache
-	c.Add(url, body)
-	return body, nil
-}
-
-func MakeRequest(url string) ([]byte, error) {
-	//get request
+	//Else, make request
 	res, err := http.Get(url)
 	if err != nil {
-		return []byte{}, err
-	}
-
-	// Read response and check its valid
-	body, err := io.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return []byte{}, err
+		return zero, err
 	}
 	if res.StatusCode > 299 {
-		return []byte{}, errors.New("Api request failed")
+		return zero, errors.New("Api request failed")
 	}
 
-	return body, err
+	// Make a decoder from the request
+	decoder := json.NewDecoder(res.Body)
+	defer res.Body.Close()
+
+	// Decode into the type they requested
+	var parsed T
+	if err := decoder.Decode(&parsed); err != nil {
+		return zero, err
+	}
+
+	// Add to the cache
+	c.Add(url, parsed)
+
+	// Return
+	return parsed, nil
 }
+
+//

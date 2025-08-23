@@ -53,7 +53,7 @@ func main() {
 
 		// Scan input and read to cleaner
 		scanner.Scan()
-		input := strings.Fields(strings.Trim(strings.ToLower(scanner.Text()), " "))
+		input := strings.Fields(strings.ToLower(strings.TrimSpace(scanner.Text())))
 		fmt.Println("")
 
 		// initialise args. If no input, continue. If more than one command, add to args
@@ -70,7 +70,7 @@ func main() {
 		if ok {
 			err = cmd.callback(config, args...)
 		} else {
-			fmt.Printf("Error: unknown command\n")
+			fmt.Printf("Error: unknown command. Type 'help' far a list of commands.\n")
 		}
 
 		if errors.Is(err, errExit) {

@@ -13,7 +13,7 @@ type PokeCache struct {
 
 type cacheEntry struct {
 	createdAt time.Time
-	val       []byte
+	val       any
 }
 
 func NewCache(ctx context.Context, interval time.Duration) *PokeCache {
@@ -27,7 +27,7 @@ func NewCache(ctx context.Context, interval time.Duration) *PokeCache {
 	return &cache
 }
 
-func (c *PokeCache) Add(key string, val []byte) {
+func (c *PokeCache) Add(key string, val any) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -37,7 +37,7 @@ func (c *PokeCache) Add(key string, val []byte) {
 	}
 }
 
-func (c *PokeCache) Get(key string) ([]byte, bool) {
+func (c *PokeCache) Get(key string) (any, bool) {
 	c.lock.Lock()
 
 	val, ok := c.cache[key]
@@ -48,7 +48,7 @@ func (c *PokeCache) Get(key string) ([]byte, bool) {
 		return val.val, true
 	}
 
-	return []byte{}, ok
+	return nil, false
 }
 
 func (c *PokeCache) reapLoop(ctx context.Context, interval time.Duration) {

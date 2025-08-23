@@ -1,10 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"internal/pokeapi"
@@ -31,15 +29,7 @@ func cmdHelp(_ *config, args ...string) error {
 
 func cmdMap(conf *config, args ...string) error {
 	// Search cache and make request
-	body, err := pokeapi.Get(conf.next_req, conf.cache)
-	if err != nil {
-		return err
-	}
-
-	// Parse response into locations struct
-	var locations Locations
-
-	err = json.Unmarshal([]byte(body), &locations)
+	locations, err := pokeapi.Get[Locations](conf.next_req, conf.cache)
 	if err != nil {
 		return err
 	}
@@ -66,15 +56,7 @@ func cmdMap(conf *config, args ...string) error {
 
 func cmdMapb(conf *config, args ...string) error {
 	// Search cache and make request
-	body, err := pokeapi.Get(conf.prev_req, conf.cache)
-	if err != nil {
-		return err
-	}
-
-	// Parse response into locations struct
-	var locations Locations
-
-	err = json.Unmarshal([]byte(body), &locations)
+	locations, err := pokeapi.Get[Locations](conf.prev_req, conf.cache)
 	if err != nil {
 		return err
 	}
@@ -107,16 +89,8 @@ func cmdExplore(conf *config, args ...string) error {
 	req := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", args[0])
 
 	// Search cache and make request
-	body, err := pokeapi.Get(req, conf.cache)
+	location, err := pokeapi.Get[LocationReponse](req, conf.cache)
 	if err != nil {
-		return err
-	}
-
-	var location LocationReponse
-
-	err = json.Unmarshal(body, &location)
-	if err != nil {
-		fmt.Printf("Failed to unmarshall")
 		return err
 	}
 
@@ -133,28 +107,22 @@ func cmdCatch(conf *config, args ...string) error {
 	}
 
 	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s/", args[0])
-	body, err := pokeapi.Get(url, conf.cache)
+	pokemon, err := pokeapi.Get[Pokemon](url, conf.cache)
 	if err != nil {
 		return err
 	}
 
-	var pokemon Pokemon
-
-	if err := json.Unmarshal(body, &pokemon); err != nil {
-		return err
-	}
-
-	fmt.Printf("Throwing a ball at %s\n", args[0])
+	fmt.Printf("Throwing a Pokeball at %s...\n", args[0])
 
 	wait := time.Duration((7+rand.Intn(10))*100) * time.Millisecond
 	time.Sleep(wait)
 
 	catch := 30 >= rand.Intn(pokemon.BaseExperience)
 	if catch {
-		fmt.Printf("%s was caught!!\n", strings.ToTitle(args[0]))
+		fmt.Printf("%s was caught!!\n", args[0])
 		conf.pokedex[args[0]] = pokemon
 	} else {
-		fmt.Printf("%s escaped!!\n", strings.ToTitle(args[0]))
+		fmt.Printf("%s escaped!!\n", args[0])
 	}
 
 	return nil
@@ -239,11 +207,6 @@ func GetCommands() map[string]cliCommand {
 			name:        "mapb",
 			description: "Move back backwards",
 			callback:    cmdMapb,
-		},
-		"test": {
-			name:        "test",
-			description: "test newest feature",
-			callback:    building,
 		},
 	}
 }

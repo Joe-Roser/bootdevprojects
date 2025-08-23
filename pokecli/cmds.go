@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
 	"internal/pokeapi"
 )
@@ -15,7 +18,7 @@ type cliCommand struct {
 
 func cmdExit(_ *config, _ ...string) error {
 	fmt.Print("Closing the Pokedex... Goodbye!\n\n")
-	return ErrExit
+	return errExit
 }
 
 func cmdHelp(_ *config, args ...string) error {
@@ -26,81 +29,11 @@ func cmdHelp(_ *config, args ...string) error {
 	return nil
 }
 
-type Locations struct {
-	Count    int `json:"count"`
-	Next     any `json:"next"`
-	Previous any `json:"previous"`
-	Results  []struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"results"`
-}
-
-type LocationReponse struct {
-	EncounterMethodRates []struct {
-		EncounterMethod struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"encounter_method"`
-		VersionDetails []struct {
-			Rate    int `json:"rate"`
-			Version struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
-			} `json:"version"`
-		} `json:"version_details"`
-	} `json:"encounter_method_rates"`
-	GameIndex int `json:"game_index"`
-	ID        int `json:"id"`
-	Location  struct {
-		Name string `json:"name"`
-		URL  string `json:"url"`
-	} `json:"location"`
-	Name  string `json:"name"`
-	Names []struct {
-		Language struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"language"`
-		Name string `json:"name"`
-	} `json:"names"`
-	PokemonEncounters []struct {
-		Pokemon struct {
-			Name string `json:"name"`
-			URL  string `json:"url"`
-		} `json:"pokemon"`
-		VersionDetails []struct {
-			EncounterDetails []struct {
-				Chance          int   `json:"chance"`
-				ConditionValues []any `json:"condition_values"`
-				MaxLevel        int   `json:"max_level"`
-				Method          struct {
-					Name string `json:"name"`
-					URL  string `json:"url"`
-				} `json:"method"`
-				MinLevel int `json:"min_level"`
-			} `json:"encounter_details"`
-			MaxChance int `json:"max_chance"`
-			Version   struct {
-				Name string `json:"name"`
-				URL  string `json:"url"`
-			} `json:"version"`
-		} `json:"version_details"`
-	} `json:"pokemon_encounters"`
-}
-
 func cmdMap(conf *config, args ...string) error {
-	// Check cache
-	body, ok := conf.cache.Get(conf.next_req)
-
-	//if no hit, make requset
-	var err error
-	if !ok {
-		body, err = pokeapi.MakeRequest(conf.next_req)
-		if err != nil {
-			return err
-		}
-		conf.cache.Add(conf.next_req, body)
+	// Search cache and make request
+	body, err := pokeapi.Get(conf.next_req, conf.cache)
+	if err != nil {
+		return err
 	}
 
 	// Parse response into locations struct
@@ -131,17 +64,10 @@ func cmdMap(conf *config, args ...string) error {
 	return nil
 }
 func cmdMapb(conf *config, args ...string) error {
-	// Check Cache
-	body, ok := conf.cache.Get(conf.prev_req)
-
-	//if no hit, make requset
-	var err error
-	if !ok {
-		body, err = pokeapi.MakeRequest(conf.prev_req)
-		if err != nil {
-			return err
-		}
-		conf.cache.Add(conf.prev_req, body)
+	// Search cache and make request
+	body, err := pokeapi.Get(conf.prev_req, conf.cache)
+	if err != nil {
+		return err
 	}
 
 	// Parse response into locations struct
@@ -174,23 +100,15 @@ func cmdMapb(conf *config, args ...string) error {
 
 func cmdExplore(conf *config, args ...string) error {
 	if len(args) != 1 {
-		return ErrInvalidInput
+		return errInvalidInput
 	}
 
 	req := fmt.Sprintf("https://pokeapi.co/api/v2/location-area/%s/", args[0])
 
-	// Check cache
-	body, ok := conf.cache.Get(req)
-
-	//if no hit, make requset
-	var err error
-	if !ok {
-		body, err = pokeapi.MakeRequest(req)
-		if err != nil {
-			fmt.Printf("Http request failed!!\n")
-			return err
-		}
-		conf.cache.Add(conf.next_req, body)
+	// Search cache and make request
+	body, err := pokeapi.Get(req, conf.cache)
+	if err != nil {
+		return err
 	}
 
 	var location LocationReponse
@@ -208,11 +126,49 @@ func cmdExplore(conf *config, args ...string) error {
 	return nil
 }
 
+func cmdCatch(conf *config, args ...string) error {
+	if len(args) != 1 {
+		return errInvalidInput
+	}
+
+	url := fmt.Sprintf("https://pokeapi.co/api/v2/pokemon/%s/", args[0])
+	body, err := pokeapi.Get(url, conf.cache)
+	if err != nil {
+		return err
+	}
+
+	var pokemon Pokemon
+
+	if err := json.Unmarshal(body, &pokemon); err != nil {
+		return err
+	}
+
+	fmt.Printf("Throwing a ball at %s\n", args[0])
+
+	wait := time.Duration((7+rand.Intn(10))*100) * time.Millisecond
+	time.Sleep(wait)
+
+	catch := 30 >= rand.Intn(pokemon.BaseExperience)
+	if catch {
+		fmt.Printf("%s was caught!!\n", strings.ToTitle(args[0]))
+		conf.pokedex[args[0]] = pokemon
+	} else {
+		fmt.Printf("%s escaped!!\n", strings.ToTitle(args[0]))
+	}
+
+	return nil
+}
+
 //The commands dictionary
 
 func GetCommands() map[string]cliCommand {
 	// Return a map from keys to values
 	return map[string]cliCommand{
+		"catch": {
+			name:        "catch [pokemon]",
+			description: "Try catch a pokemon",
+			callback:    cmdCatch,
+		},
 		"exit": {
 			name:        "exit",
 			description: "Exit the Pokedex",

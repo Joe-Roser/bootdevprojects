@@ -13,14 +13,15 @@ import (
 )
 
 // Errors
-var ErrInvalidInput = errors.New("invalid input")
-var ErrExit = errors.New("Exit")
+var errInvalidInput = errors.New("invalid input")
+var errExit = errors.New("Exit")
 
 // config type
 type config struct {
 	prev_req string
 	next_req string
 	cache    *pokecache.PokeCache
+	pokedex  map[string]Pokemon
 }
 
 // Constants
@@ -43,6 +44,7 @@ func main() {
 		prev_req: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
 		next_req: "https://pokeapi.co/api/v2/location-area/?offset=0&limit=20",
 		cache:    pokecache.NewCache(ctx, cache_reset),
+		pokedex:  make(map[string]Pokemon),
 	}
 
 	// Main loop of REPL
@@ -71,7 +73,7 @@ func main() {
 			fmt.Printf("Error: unknown command\n")
 		}
 
-		if errors.Is(err, ErrExit) {
+		if errors.Is(err, errExit) {
 			return
 		} else if err != nil {
 			fmt.Printf("Error: %v\n", err)

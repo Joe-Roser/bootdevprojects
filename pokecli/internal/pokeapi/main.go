@@ -4,7 +4,28 @@ import (
 	"errors"
 	"io"
 	"net/http"
+
+	"internal/pokecache"
 )
+
+func Get(url string, c *pokecache.PokeCache) ([]byte, error) {
+	body, ok := c.Get(url)
+
+	// Return on cache hit
+	if ok {
+		return body, nil
+	}
+
+	// else, make request, check errors and return
+	body, err := MakeRequest(url)
+	if err != nil {
+		return nil, err
+	}
+
+	// remember to add the request to the cache
+	c.Add(url, body)
+	return body, nil
+}
 
 func MakeRequest(url string) ([]byte, error) {
 	//get request

@@ -1,3 +1,3 @@
 # bookbot
 
-BookBot is my first [Boot.dev](https://www.boot.dev) project!
+Bookbot is a python script for getting stats about word breakdowns of a book
